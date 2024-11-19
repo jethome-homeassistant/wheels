@@ -1,4 +1,4 @@
-name: "Home Assistant wheels builder"
+name: "JH Home Assistant wheels builder"
 description: "Builds and publishes python wheels"
 inputs:
   tag:
@@ -54,13 +54,13 @@ inputs:
     required: false
   wheels-host:
     description: "wheels host URL"
-    default: "wheels.hass.io"
+    default: "wheels.iot.jethome.ru"
   wheels-user:
     description: "User for wheels host"
     default: "wheels"
   wheels-index:
     description: "The wheels index URL"
-    default: "https://wheels.home-assistant.io"
+    default: "https://wheels.iot.jethome.ru"
   local-wheels-repo-path:
     description: "Path to a local folder to copy the repository to (wheels-host and wheels-user must be empty)"
     default: ""
@@ -72,7 +72,7 @@ runs:
       id: version
       run: |
         input="${GITHUB_ACTION_PATH##*/}"
-        if [[ "${input}" == "master" ]] || [[ -z "${input}" ]]; then
+        if [[ "${input}" == "master" ]] || [[ "${input}" == "master-jethub" ]] || [[ -z "${input}" ]]; then
           input="dev"
         fi
         echo "version=${input}" >> $GITHUB_OUTPUT
@@ -87,14 +87,14 @@ runs:
 
           # Validate & update known_hosts
           ssh-keygen -y -e -f .ssh/id_rsa
-          ssh-keyscan -H ${{ inputs.wheels-host }} >> .ssh/known_hosts
+          ssh-keyscan -t rsa -H ${{ inputs.wheels-host }} >> .ssh/known_hosts
           chmod 600 .ssh/*
         fi
 
     - shell: bash
       id: pull
       run: |
-        name="ghcr.io/home-assistant/wheels/${{ inputs.arch }}/${{ inputs.tag }}/${{ inputs.abi }}:${{ steps.version.outputs.version }}"
+        name="ghcr.io/jethome-homeassistant/wheels/${{ inputs.arch }}/${{ inputs.tag }}/${{ inputs.abi }}:${{ steps.version.outputs.version }}"
         docker pull "$name"
         echo "name=$name" >> $GITHUB_OUTPUT
 
@@ -152,7 +152,7 @@ runs:
           fi
           build+=("--remote \"/data/output\"")
         else
-          build+=("--remote \"${{ inputs.wheels-user }}@${{ inputs.wheels-host }}:/opt/wheels\"")
+          build+=("--remote "${{ inputs.wheels-user }}@${{ inputs.wheels-host }}:/var/www/wheels\"")
         fi
 
 
