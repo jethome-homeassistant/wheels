@@ -6,7 +6,7 @@ ARG \
     CPYTHON_ABI \
     QEMU_CPU \
     AUDITWHEEL_VERSION=6.4.2 \
-    PIP_EXTRA_INDEX_URL=https://wheels.home-assistant.io/musllinux-index/
+    PIP_EXTRA_INDEX_URL=https://wheels.iot.jethome.ru/musllinux-index/
 
 WORKDIR /usr/src
 
@@ -33,6 +33,7 @@ RUN \
         automake \
         cargo \
         libffi \
+        ninja \
     && apk add --no-cache --virtual .build-dependencies \
         libffi-dev \
     && if [ "${BUILD_ARCH}" = "i386" ]; then \
