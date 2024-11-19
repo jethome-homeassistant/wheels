@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - master-jethub
+  workflow_dispatch:
 
 jobs:
   publish:
@@ -14,33 +15,40 @@ jobs:
     strategy:
       fail-fast: False
       matrix:
-        abi: ["cp312", "cp313"]
+        abi: ["cp313", "cp314"]
         tag: ["musllinux_1_2"]
         arch: ["aarch64", "armhf", "armv7", "amd64", "i386"]
         include:
-          - abi: cp312
-            tag: musllinux_1_2
-            base: 3.12-alpine3.20
           - abi: cp313
             tag: musllinux_1_2
-            base: 3.13-alpine3.20
+            base: 3.13-alpine3.22
+          - abi: cp314
+            tag: musllinux_1_2
+            base: 3.14-alpine3.22
+        exclude:
+          - abi: cp314
+            arch: armhf
+          - abi: cp314
+            arch: armv7
+          - abi: cp314
+            arch: i386
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v5.0.0
 
       - shell: bash
         id: info
         run: |
           declare -a docker
 
-          name="ghcr.io/jethub-homeassistant/wheels/${{ matrix.arch }}/${{ matrix.tag }}/${{ matrix.abi }}"
+          name="ghcr.io/jethome-homeassistant/wheels/${{ matrix.arch }}/${{ matrix.tag }}/${{ matrix.abi }}"
 
           version=$(echo "${{ github.ref }}" | awk -F"/" '{print $NF}' )
           if [ "${version}" = "master" ]; then
             version=dev
           fi
 
-          base="ghcr.io/jethub-homeassistant/${{ matrix.arch }}-base-python:${{ matrix.base }}"
+          base="ghcr.io/jethome-homeassistant/${{ matrix.arch }}-base-python:${{ matrix.base }}"
 
           if [ "${{ matrix.arch }}" = "armhf" ]; then
             docker+=("--build-arg QEMU_CPU=arm1176")
@@ -56,7 +64,7 @@ jobs:
           echo "docker=${docker[@]}" >> $GITHUB_OUTPUT
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3.4.0
+        uses: docker/login-action@v3.6.0
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
