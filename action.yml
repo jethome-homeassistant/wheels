@@ -152,7 +152,7 @@ runs:
           fi
           build+=("--remote \"/data/output\"")
         else
-          build+=("--remote "${{ inputs.wheels-user }}@${{ inputs.wheels-host }}:/var/www/wheels\"")
+          build+=("--remote \"${{ inputs.wheels-user }}@${{ inputs.wheels-host }}:/var/www/wheels\"")
         fi
 
 
