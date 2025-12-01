@@ -15,14 +15,12 @@ jobs:
     strategy:
       fail-fast: False
       matrix:
-        abi: ["cp313", "cp314"]
+        abi: ["cp314"]
         tag: ["musllinux_1_2"]
         arch: ["aarch64", "amd64"]
         include:
-          - abi: cp313
-            base: 3.13-alpine3.22
           - abi: cp314
-            base: 3.14-alpine3.22
+            base: 3.14-alpine3.24
 
           - arch: aarch64
             platform: linux/arm64
@@ -32,13 +30,11 @@ jobs:
             runs-on: ${{ vars.RUNNER }}
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - shell: bash
         id: info
         run: |
-          declare -a docker
-
           name="ghcr.io/jethome-homeassistant/wheels/${{ matrix.arch }}/${{ matrix.tag }}/${{ matrix.abi }}"
 
           version=$(echo "${{ github.ref }}" | awk -F"/" '{print $NF}' )
@@ -46,42 +42,28 @@ jobs:
             version=dev
           fi
 
-          base="ghcr.io/jethome-homeassistant/${{ matrix.arch }}-base-python:${{ matrix.base }}"
-
-          if [ "${{ matrix.arch }}" = "armhf" ]; then
-            docker+=("--build-arg QEMU_CPU=arm1176")
-          fi
-
-          if docker pull "$name:dev" > /dev/null 2>&1; then
-            docker+=("--cache-from $name:dev")
-          fi
-
           echo "name=$name" >> $GITHUB_OUTPUT
           echo "version=$version" >> $GITHUB_OUTPUT
-          echo "base=$base" >> $GITHUB_OUTPUT
-          echo "docker=${docker[@]}" >> $GITHUB_OUTPUT
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3.6.0
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - shell: bash
-        run: |
-          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-
-      - shell: bash
-        run: |
-          docker build \
-            -t ${{ steps.info.outputs.name }}:${{ steps.info.outputs.version }} \
-            ${{ steps.info.outputs.docker }} \
-            --build-arg "BUILD_FROM=${{ steps.info.outputs.base }}" \
-            --build-arg "BUILD_ARCH=${{ matrix.arch }}" \
-            --build-arg "CPYTHON_ABI=${{ matrix.abi }}" \
-            .
-
-      - shell: bash
-        run: |
-          docker push ${{ steps.info.outputs.name }}:${{ steps.info.outputs.version }}
+      - name: Build Docker image
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+        with:
+          context: . # So action will not pull the repository again
+          push: ${{ github.event_name != 'pull_request' }}
+          pull: true
+          platforms: ${{ matrix.platform }}
+          cache-from: type=registry,ref=${{ steps.info.outputs.name }}:dev
+          build-args: |
+            BUILD_FROM=ghcr.io/home-assistant/${{ matrix.arch }}-base-python:${{ matrix.base }}
+            BUILD_ARCH=${{ matrix.arch }}
+            CPYTHON_ABI=${{ matrix.abi }}
+          tags: |
+            ${{ steps.info.outputs.name }}:${{ steps.info.outputs.version }}
+            ${{ steps.info.outputs.name }}:${{ github.sha }}
